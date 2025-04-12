@@ -81,17 +81,88 @@ npm run dev
 
 ## Deployment to Google Cloud Run
 
-1. Update the configuration in `deploy-cloud-run.sh` with your GCP project details
+This application can be deployed to Google Cloud Run with a PostgreSQL database in Cloud SQL. The deployment process is automated with a single script that handles everything from setting up the database to deploying the application.
 
-2. Make sure you have the Google Cloud SDK installed and configured
+### Prerequisites
 
-3. Create a PostgreSQL instance in Google Cloud SQL or use a managed PostgreSQL provider
+1. Install the Google Cloud SDK:
+   ```bash
+   # For macOS
+   brew install google-cloud-sdk
+   
+   # For other platforms, see: https://cloud.google.com/sdk/docs/install
+   ```
 
-4. Run the deployment script:
+2. Log in to your Google Cloud account:
+   ```bash
+   gcloud auth login
+   ```
+
+3. Ensure you have Docker installed locally to build the container image.
+
+4. Make sure you have a valid `.env` file with your Spotify API credentials.
+
+### Deployment Process
+
+Run the comprehensive deployment script:
 
 ```bash
-./deploy-cloud-run.sh
+./deploy.sh
 ```
+
+This script will:
+
+1. Verify GCP project and authentication
+2. Enable all required Google Cloud APIs
+3. Set up a Cloud SQL PostgreSQL database
+4. Configure environment variables for production
+5. Build and deploy the Docker image to Cloud Run
+6. Apply Prisma migrations to the production database
+
+The script includes detailed logging and error handling, with all logs saved to a timestamped log file for troubleshooting.
+
+### Manual Deployment (if needed)
+
+If you need more control over the deployment process, you can:
+
+1. Set up the Cloud SQL database:
+   ```bash
+   # Enable required APIs
+   gcloud services enable sqladmin.googleapis.com compute.googleapis.com
+   
+   # Create a Cloud SQL instance
+   gcloud sql instances create vibesmith-db \
+     --database-version=POSTGRES_14 \
+     --tier=db-f1-micro \
+     --region=us-central1
+   
+   # Create database and user
+   gcloud sql databases create vibesmith --instance=vibesmith-db
+   gcloud sql users create vibesmith-user --instance=vibesmith-db
+   ```
+
+2. Build and deploy the Docker image:
+   ```bash
+   # Build the image
+   docker build -t gcr.io/vibesmith-456523/vibesmith:latest .
+   
+   # Push to Google Container Registry
+   docker push gcr.io/vibesmith-456523/vibesmith:latest
+   
+   # Deploy to Cloud Run
+   gcloud run deploy vibesmith \
+     --image gcr.io/vibesmith-456523/vibesmith:latest \
+     --platform managed \
+     --region us-central1 \
+     --allow-unauthenticated
+   ```
+
+## Security Notes
+
+- Never commit `.env` files to your repository
+- Use `.env.example` as a template for required variables
+- When setting up CI/CD, store secrets in Google Secret Manager or similar service
+- Rotate secrets periodically, especially for production deployments
 
 ## License
 

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import { LoginButton } from '@/components/LoginButton';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import spotifyIcon from '../../public/spotify-icon.png';
 
 export default async function Home({
   searchParams,
@@ -31,7 +32,7 @@ export default async function Home({
         <div className="flex flex-col items-center text-center">
           <div className="relative w-24 h-24 mb-6">
             <Image
-              src="/spotify-icon.png"
+              src={spotifyIcon}
               alt="Spotify Icon"
               width={96}
               height={96}

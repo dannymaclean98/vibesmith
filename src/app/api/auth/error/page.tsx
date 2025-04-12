@@ -3,8 +3,10 @@
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
-export default function AuthErrorPage() {
+// Create a client component that uses searchParams
+function AuthErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
 
@@ -34,27 +36,40 @@ export default function AuthErrorPage() {
   };
 
   return (
+    <div className="flex flex-col items-center text-center">
+      <h1 className="text-3xl font-bold tracking-tight text-white mb-4">
+        Authentication Error
+      </h1>
+
+      <div className="p-4 mb-6 bg-red-900/40 border border-red-700 rounded-md text-red-200 text-sm">
+        {getErrorMessage(error)}
+      </div>
+
+      <p className="text-zinc-400 mb-8">
+        Please try signing in again or contact support if the problem persists.
+      </p>
+
+      <Link href="/">
+        <Button variant="spotify" size="lg">
+          Back to Login
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
+// Main page component with Suspense
+export default function AuthErrorPage() {
+  return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-zinc-900 to-black">
       <div className="w-full max-w-md p-8 space-y-8 bg-zinc-800 rounded-xl shadow-xl">
-        <div className="flex flex-col items-center text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-4">
-            Authentication Error
-          </h1>
-
-          <div className="p-4 mb-6 bg-red-900/40 border border-red-700 rounded-md text-red-200 text-sm">
-            {getErrorMessage(error)}
+        <Suspense fallback={
+          <div className="text-center text-white">
+            Loading error details...
           </div>
-
-          <p className="text-zinc-400 mb-8">
-            Please try signing in again or contact support if the problem persists.
-          </p>
-
-          <Link href="/">
-            <Button variant="spotify" size="lg">
-              Back to Login
-            </Button>
-          </Link>
-        </div>
+        }>
+          <AuthErrorContent />
+        </Suspense>
       </div>
     </main>
   );

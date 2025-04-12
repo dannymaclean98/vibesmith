@@ -21,6 +21,8 @@ help:
 	@echo "  make docker-build     - Build Docker image"
 	@echo "  make docker-run       - Run Docker container locally"
 	@echo "  make deploy           - Deploy to Google Cloud Run"
+	@echo "  make deploy-prod      - Deploy to Google Cloud Run with production environment"
+	@echo "  make setup-db         - Setup Cloud SQL database"
 
 # Development
 .PHONY: dev
@@ -91,6 +93,16 @@ docker-run:
 .PHONY: deploy
 deploy:
 	./deploy-cloud-run.sh
+
+# Deploy with production environment
+.PHONY: deploy-prod
+deploy-prod:
+	./deploy-cloud-run.sh -p
+
+# Setup Cloud SQL database
+.PHONY: setup-db
+setup-db:
+	./setup-cloud-sql.sh
 
 # Install dependencies
 .PHONY: install
