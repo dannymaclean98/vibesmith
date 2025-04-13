@@ -4,6 +4,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { JWT } from 'next-auth/jwt';
 import { Session } from 'next-auth';
 import { PrismaClient } from '@prisma/client';
+import { DEFAULT_SCOPES } from '@/lib/spotify';
 
 // Directly initialize a new Prisma client for Auth
 console.log('[DEBUG] Initializing PrismaClient for Auth...');
@@ -19,7 +20,7 @@ try {
 }
 
 // Spotify OAuth scopes
-const scopes = ['user-read-email', 'user-read-private', 'user-library-read'].join(' ');
+const scopes = DEFAULT_SCOPES;
 
 // Create and log the PrismaAdapter
 console.log('[DEBUG] Creating PrismaAdapter...');
@@ -34,7 +35,9 @@ export const authOptions: AuthOptions = {
       clientId: process.env.SPOTIFY_CLIENT_ID || '',
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET || '',
       authorization: {
-        params: { scope: scopes },
+        params: {
+          scope: DEFAULT_SCOPES,
+        },
       },
     }),
   ],
@@ -45,6 +48,10 @@ export const authOptions: AuthOptions = {
         console.log('[DEBUG] JWT callback with account and user:', { userId: user.id });
         // Store tokens in database for later use
         try {
+          if (!account.access_token || !account.refresh_token) {
+            throw new Error('Missing access or refresh token');
+          }
+          
           console.log('[DEBUG] Attempting to upsert token...');
           await prismaClientAuth.token.upsert({
             where: { userId: user.id },

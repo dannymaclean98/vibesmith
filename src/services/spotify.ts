@@ -47,7 +47,25 @@ export const setSpotifyCredentials = async (userId: string) => {
       }
     } catch (error) {
       console.error('Error refreshing Spotify token:', error);
-      throw new Error('Failed to refresh token. You may need to login again.');
+      
+      // Extract error information or set defaults
+      const refreshError = error as any;
+      const statusCode = refreshError.statusCode || 0;
+      const errorBody = refreshError.body || {};
+      
+      // Check if this is a "refresh token revoked" error - happens when user revokes app access
+      if (statusCode === 400 && 
+          errorBody && 
+          (errorBody.error === 'invalid_grant' || 
+           (typeof errorBody.error_description === 'string' && 
+            errorBody.error_description.includes('revoked')))) {
+        // Token is completely invalid - need to reauthenticate
+        throw new Error('Spotify access revoked. Please reconnect your Spotify account.');
+      }
+      
+      // For other refresh errors, the token is still expired but we can try to use it
+      // This will likely fail but it allows our code to proceed and show appropriate errors
+      console.warn('Using expired token as fallback. API calls may fail.');
     }
   }
 

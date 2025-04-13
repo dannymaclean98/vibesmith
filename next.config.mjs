@@ -5,11 +5,31 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   images: {
-    domains: ['i.scdn.co'], // Allow Spotify image domain
+    domains: [
+      'i.scdn.co', // Allow Spotify image domain
+      'scontent-ams4-1.xx.fbcdn.net', // Facebook CDN
+      'platform-lookaside.fbsbx.com', // Facebook Platform
+      'fbcdn.net', // Facebook CDN
+      'fbsbx.com', // Facebook Storage
+      'graph.facebook.com', // Facebook Graph API
+      'scontent.xx.fbcdn.net', // Facebook CDN
+    ],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '**.a.run.app',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.fbcdn.net',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.xx.fbcdn.net',
         port: '',
         pathname: '/**',
       },

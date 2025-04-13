@@ -19,11 +19,30 @@ export async function GET(req: NextRequest) {
     const tracks = await prismaClient.likedTrack.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
     });
+
+    // Transform to match group tracks format with users array
+    const formattedTracks = tracks.map(track => ({
+      ...track,
+      users: [{
+        id: track.user.id,
+        name: track.user.name,
+        image: track.user.image
+      }]
+    }));
 
     return NextResponse.json({
       success: true,
-      tracks,
+      tracks: formattedTracks,
     });
   } catch (error) {
     console.error('Error fetching tracks:', error);

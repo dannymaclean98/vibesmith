@@ -54,6 +54,8 @@ model User {
   updatedAt       DateTime      @updatedAt
   tokens          Token?
   likedTracks     LikedTrack[]
+  ownedGroups     Group[]       @relation("GroupOwner")
+  memberships     GroupMember[]
 }
 
 model VerificationToken {
@@ -89,4 +91,28 @@ model LikedTrack {
   updatedAt       DateTime @updatedAt
 
   @@unique([userId, spotifyTrackId])
+}
+
+model Group {
+  id              String        @id @default(uuid())
+  name            String
+  description     String?
+  spotifyPlaylistId String?
+  spotifyPlaylistUrl String?
+  ownerId         String
+  owner           User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         GroupMember[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model GroupMember {
+  id              String   @id @default(uuid())
+  userId          String
+  groupId         String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group           Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  joinedAt        DateTime @default(now())
+
+  @@unique([userId, groupId])
 }

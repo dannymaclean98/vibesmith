@@ -56,25 +56,13 @@ export default function HomePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl mb-8">
+          <div className="grid grid-cols-1 gap-6 w-full max-w-2xl mb-8">
             <div className="bg-zinc-700 p-6 rounded-lg shadow-md">
               <h2 className="text-xl font-bold text-white mb-3">Your Library</h2>
               <p className="text-zinc-300 mb-4">Import and manage your Spotify liked tracks.</p>
               <Link href="/dashboard">
                 <Button variant="spotify" fullWidth>
                   Go to Dashboard
-                </Button>
-              </Link>
-            </div>
-
-            <div className="bg-zinc-700 p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-bold text-white mb-3">The Chat</h2>
-              <p className="text-zinc-300 mb-4">
-                Chat with other music lovers about tracks and playlists.
-              </p>
-              <Link href="/chat">
-                <Button variant="spotify" fullWidth>
-                  Join The Chat
                 </Button>
               </Link>
             </div>

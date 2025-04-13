@@ -10,6 +10,7 @@ const buttonVariants = cva(
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         spotify: 'bg-[#1DB954] text-white hover:bg-[#1ed760]',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        danger: 'bg-red-600 text-white hover:bg-red-700',
         outline: 'border border-input hover:bg-accent hover:text-accent-foreground',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
