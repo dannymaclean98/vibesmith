@@ -4,20 +4,15 @@ const prisma = new PrismaClient();
 
 async function clearDatabase() {
   try {
-    // Delete all data in reverse order of dependencies
     console.log('Clearing database...');
     
-    // Clear all session and authentication related data
+    // Delete all data in reverse order of dependencies
     await prisma.session.deleteMany();
-    await prisma.verificationToken.deleteMany();
-    await prisma.account.deleteMany();
-    await prisma.token.deleteMany();
-    
-    // Clear application data
-    await prisma.likedTrack.deleteMany();
-    await prisma.groupMember.deleteMany();
-    await prisma.group.deleteMany();
+    await prisma.verificationCode.deleteMany();
+    await prisma.reaction.deleteMany();
+    await prisma.track.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.member.deleteMany();
     
     console.log('Database cleared successfully!');
   } catch (error) {
@@ -27,4 +22,4 @@ async function clearDatabase() {
   }
 }
 
-clearDatabase(); 
+clearDatabase();

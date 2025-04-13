@@ -1,83 +1,93 @@
-import { NextAuthOptions } from "next-auth";
-import SpotifyProvider from "next-auth/providers/spotify";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import prisma from "@/lib/prisma";
-import { getTokens, refreshAccessToken } from "@/lib/spotify";
+import { cookies } from 'next/headers';
+import { prisma } from './prisma';
 
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
-  providers: [
-    SpotifyProvider({
-      clientId: process.env.SPOTIFY_CLIENT_ID as string,
-      clientSecret: process.env.SPOTIFY_CLIENT_SECRET as string,
-      authorization: {
-        params: {
-          scope: "user-read-email user-read-private user-library-read user-library-modify playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-top-read user-follow-read user-follow-modify",
+const SESSION_COOKIE_NAME = 'vibesmith_session';
+const SESSION_DURATION_DAYS = 30;
+
+export async function createSession(userId: string): Promise<string> {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS);
+
+  const session = await prisma.session.create({
+    data: {
+      userId,
+      expiresAt,
+    },
+  });
+
+  return session.token;
+}
+
+export async function getSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return null;
+  }
+
+  const session = await prisma.session.findUnique({
+    where: { token },
+    include: {
+      user: {
+        include: {
+          member: true,
         },
       },
-    }),
-  ],
-  callbacks: {
-    async signIn({ user, account, profile }) {
-      // If user is signing in with Spotify, save the spotifyId
-      if (account && account.provider === 'spotify' && profile) {
-        const spotifyProfile = profile as any;
-        
-        if (spotifyProfile.id) {
-          // Update user record with Spotify ID
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { spotifyId: spotifyProfile.id }
-          });
-        }
-      }
-      return true;
     },
-    async jwt({ token, account, user }) {
-      if (account && user) {
-        token.id = user.id;
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.expiresAt = account.expires_at;
-        
-        // Save tokens to database
-        if (account.access_token && account.refresh_token && account.expires_at) {
-          const expiresAt = new Date(account.expires_at * 1000);
-          
-          await getTokens(
-            user.id, 
-            account.access_token, 
-            account.refresh_token, 
-            expiresAt
-          );
-        }
-      }
-      
-      // Refresh token if needed
-      if (token.expiresAt && Date.now() >= (token.expiresAt as number * 1000)) {
-        const tokens = await refreshAccessToken(token.refreshToken as string);
-        
-        if (tokens) {
-          token.accessToken = tokens.accessToken;
-          token.expiresAt = tokens.expiresAt;
-        }
-      }
-      
-      return token;
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-        session.accessToken = token.accessToken as string;
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/",
-  },
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-}; 
+  });
+
+  if (!session) {
+    return null;
+  }
+
+  // Check if session is expired
+  if (session.expiresAt < new Date()) {
+    await prisma.session.delete({ where: { id: session.id } });
+    return null;
+  }
+
+  return session;
+}
+
+export async function getCurrentUser() {
+  const session = await getSession();
+  return session?.user ?? null;
+}
+
+export async function deleteSession(token: string) {
+  try {
+    await prisma.session.delete({ where: { token } });
+  } catch {
+    // Session may already be deleted
+  }
+}
+
+export async function setSessionCookie(token: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: SESSION_DURATION_DAYS * 24 * 60 * 60,
+    path: '/',
+  });
+}
+
+export async function clearSessionCookie() {
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_COOKIE_NAME);
+}
+
+export function normalizePhone(phone: string): string {
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '');
+  
+  // Ensure it starts with country code (assume US +1 if not present)
+  if (digits.length === 10) {
+    return `1${digits}`;
+  }
+  
+  return digits;
+}
+

@@ -1,11 +1,14 @@
 'use client';
 
-import { SessionProvider } from 'next-auth/react';
+import { AuthProvider } from '@/lib/auth-context';
+import { SearchProvider } from '@/lib/search-context';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={true}>
-      {children}
-    </SessionProvider>
+    <AuthProvider>
+      <SearchProvider>
+        {children}
+      </SearchProvider>
+    </AuthProvider>
   );
 }

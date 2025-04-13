@@ -11,20 +11,22 @@
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
-    "clear-db": "tsx scripts/clear-db.ts"
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push --force-reset",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:import": "tsx scripts/import-data.ts",
+    "db:clear": "tsx scripts/clear-db.ts"
   },
   "dependencies": {
-    "@auth/prisma-adapter": "^2.8.0",
     "@prisma/client": "^6.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "next": "15.3.0",
-    "next-auth": "^4.24.11",
-    "next-pwa": "^5.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "spotify-web-api-node": "^5.0.2",
-    "tailwind-merge": "^3.2.0"
+    "tailwind-merge": "^3.2.0",
+    "twilio": "^5.4.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -32,13 +34,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/spotify-web-api-node": "^5.0.11",
     "eslint": "^9",
     "eslint-config-next": "15.3.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.6",
     "prettier": "^3.5.3",
-    "prisma": "^6.6.0",
+    "prisma": "^6.19.1",
     "tailwindcss": "^4",
     "tsx": "^4.7.1",
     "typescript": "^5"

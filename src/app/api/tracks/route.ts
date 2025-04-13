@@ -1,56 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { PrismaClient } from '@prisma/client';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
-// Initialize Prisma client
-const prismaClient = new PrismaClient();
-
-export async function GET(req: NextRequest) {
-  // Get session
-  const session = await getServerSession(authOptions);
-
-  if (!session || !session.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET(request: NextRequest) {
   try {
-    // Get all tracks for the user, ordered by newest first
-    const tracks = await prismaClient.likedTrack.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true
-          }
-        }
-      }
-    });
+    const searchParams = request.nextUrl.searchParams;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const memberId = searchParams.get('memberId');
+    const search = searchParams.get('search')?.trim();
+    
+    const skip = (page - 1) * limit;
 
-    // Transform to match group tracks format with users array
-    const formattedTracks = tracks.map(track => ({
-      ...track,
-      users: [{
-        id: track.user.id,
-        name: track.user.name,
-        image: track.user.image
-      }]
-    }));
+    // Build where clause
+    const where: Prisma.TrackWhereInput = {};
+    
+    if (memberId) {
+      where.senderId = memberId;
+    }
+    
+    // Search across track name, artist name, album name, and sender name
+    if (search) {
+      where.OR = [
+        { trackName: { contains: search, mode: 'insensitive' } },
+        { artistName: { contains: search, mode: 'insensitive' } },
+        { albumName: { contains: search, mode: 'insensitive' } },
+        { sender: { name: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [tracks, total] = await Promise.all([
+      prisma.track.findMany({
+        where,
+        include: {
+          sender: true,
+          reactions: {
+            include: {
+              member: true,
+            },
+          },
+        },
+        orderBy: { sentAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.track.count({ where }),
+    ]);
 
     return NextResponse.json({
-      success: true,
-      tracks: formattedTracks,
+      tracks,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      },
     });
   } catch (error) {
     console.error('Error fetching tracks:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to fetch tracks',
-        details: (error as Error).message,
-      },
+      { error: 'Failed to fetch tracks' },
       { status: 500 }
     );
   }

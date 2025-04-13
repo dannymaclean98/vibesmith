@@ -49,3 +49,6 @@ next-env.d.ts
 # GCP credentials
 *-credentials.json
 *-key.json
+
+# data
+exports/

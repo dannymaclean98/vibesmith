@@ -397,6 +397,24 @@ log "header" "STEP 6: APPLYING DATABASE MIGRATIONS"
 log "info" "Running Prisma migrations on production database..."
 if DATABASE_URL="$DATABASE_URL" npx prisma migrate deploy >> $LOG_FILE 2>&1; then
   log "success" "Database migrations applied successfully."
+  
+  # Monitor and reset database connections if needed
+  log "info" "Checking database connection status..."
+  npx tsx scripts/monitor-connections.ts
+  
+  # If more than 80% of available connections are used, reset them
+  CONNECTION_COUNT=$(npx tsx -e "import prisma from './src/lib/prisma'; async function count() { const result = await prisma.$queryRaw\`SELECT count(*) as count FROM pg_stat_activity WHERE datname = current_database()\`; console.log(result[0].count); await prisma.$disconnect(); } count();" 2>/dev/null)
+  MAX_CONNECTIONS=$(npx tsx -e "import prisma from './src/lib/prisma'; async function max() { const result = await prisma.$queryRaw\`SHOW max_connections\`; console.log(result[0].max_connections); await prisma.$disconnect(); } max();" 2>/dev/null)
+  
+  if [ ! -z "$CONNECTION_COUNT" ] && [ ! -z "$MAX_CONNECTIONS" ]; then
+    PERCENT_USED=$(( $CONNECTION_COUNT * 100 / $MAX_CONNECTIONS ))
+    log "info" "Database connections: $CONNECTION_COUNT / $MAX_CONNECTIONS ($PERCENT_USED%)"
+    
+    if [ $PERCENT_USED -gt 80 ]; then
+      log "warning" "High connection count detected. Resetting connections..."
+      npx tsx scripts/reset-connections.ts
+    fi
+  fi
 else
   log "error" "Failed to apply database migrations. Check $LOG_FILE for details."
   # Continue with warning - don't exit since the app is already deployed

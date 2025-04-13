@@ -1,11 +1,11 @@
 {
-  "name": "VibeSmiths",
+  "name": "VibeSmiths - Group Chat Playlist",
   "short_name": "VibeSmiths",
-  "description": "Import your Spotify liked tracks",
+  "description": "All the tracks our crew has shared, with reactions and love.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1DB954",
-  "theme_color": "#1DB954",
+  "background_color": "#0a0a0a",
+  "theme_color": "#10b981",
   "orientation": "portrait",
   "icons": [
     {

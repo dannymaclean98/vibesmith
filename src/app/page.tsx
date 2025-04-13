@@ -1,77 +1,78 @@
-import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
-import Image from 'next/image';
-import { LoginButton } from '@/components/LoginButton';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import spotifyIcon from '../../public/spotify-icon.png';
+import { prisma } from '@/lib/prisma';
+import { PlaylistHeader } from '@/components/PlaylistHeader';
+import { TrackBrowser } from '@/components/TrackBrowser';
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
-  // Add debug logs for searchParams
-  console.log('[DEBUG] Root page - searchParams:', searchParams);
+// Force dynamic rendering to prevent caching issues in production
+export const dynamic = 'force-dynamic';
 
-  const session = await getServerSession(authOptions);
-  console.log('[DEBUG] Root page - session exists:', !!session);
+const TRACKS_PER_PAGE = 50;
 
-  // Use optional chaining to safely access the error property
-  const error = searchParams?.error as string | undefined;
-  console.log('[DEBUG] Root page - error param:', error);
+async function getInitialTracks() {
+  try {
+    const [tracks, total] = await Promise.all([
+      prisma.track.findMany({
+        include: {
+          sender: true,
+          reactions: {
+            include: {
+              member: true,
+            },
+          },
+        },
+        orderBy: { sentAt: 'desc' },
+        take: TRACKS_PER_PAGE,
+      }),
+      prisma.track.count(),
+    ]);
 
-  // If user is logged in, redirect to home page
-  if (session) {
-    console.log('[DEBUG] Root page - redirecting to /home (user is logged in)');
-    redirect('/home');
+    return {
+      tracks,
+      pagination: {
+        page: 1,
+        limit: TRACKS_PER_PAGE,
+        total,
+        totalPages: Math.ceil(total / TRACKS_PER_PAGE),
+        hasMore: TRACKS_PER_PAGE < total,
+      },
+    };
+  } catch (error) {
+    console.error('Failed to fetch tracks:', error);
+    return {
+      tracks: [],
+      pagination: {
+        page: 1,
+        limit: TRACKS_PER_PAGE,
+        total: 0,
+        totalPages: 0,
+        hasMore: false,
+      },
+    };
   }
+}
+
+async function getStats() {
+  try {
+    const [memberCount, trackCount] = await Promise.all([
+      prisma.member.count(),
+      prisma.track.count(),
+    ]);
+    return { members: memberCount, tracks: trackCount };
+  } catch (error) {
+    console.error('Failed to fetch stats:', error);
+    return { members: 0, tracks: 0 };
+  }
+}
+
+export default async function Home() {
+  const [{ tracks, pagination }, stats] = await Promise.all([
+    getInitialTracks(),
+    getStats(),
+  ]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-zinc-900 to-black">
-      <div className="w-full max-w-md p-8 space-y-8 bg-zinc-800 rounded-xl shadow-xl">
-        <div className="flex flex-col items-center text-center">
-          <div className="relative w-24 h-24 mb-6">
-            <Image
-              src={spotifyIcon}
-              alt="Spotify Icon"
-              width={96}
-              height={96}
-              className="rounded-full"
-              priority
-            />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">VibeSmiths</h1>
-          <p className="text-zinc-400 mb-8">
-            Import your Spotify liked tracks and create succulent playlists
-          </p>
-
-          {error && (
-            <div className="p-3 mb-4 w-full bg-red-900/40 border border-red-700 rounded-md text-red-200 text-sm">
-              There was an error with authentication:{' '}
-              {error === 'Callback' ? 'Unable to connect to Spotify' : error}. Please try again.
-            </div>
-          )}
-
-          <LoginButton variant="spotify" size="xl" fullWidth className="shadow-lg gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 496 512"
-              fill="currentColor"
-              className="w-5 h-5"
-            >
-              <path d="M248 8C111.1 8 0 119.1 0 256s111.1 248 248 248 248-111.1 248-248S384.9 8 248 8Z" />
-              <path
-                fill="#1DB954"
-                d="M406.6 231.1c-5.2 0-8.4-1.3-12.9-3.9-71.2-42.5-198.5-52.7-280.9-29.7-3.6 1-8.1 2.6-12.9 2.6-13.2 0-23.3-10.3-23.3-23.6 0-13.6 8.4-21.3 17.4-23.9 35.2-10.3 74.6-15.2 117.5-15.2 73 0 149.5 15.2 205.4 47.8 7.8 4.5 12.9 10.7 12.9 22.6 0 13.6-11 23.3-23.2 23.3zm-31 76.2c-5.2 0-8.7-2.3-12.3-4.2-62.5-37-155.7-51.9-238.6-29.4-4.8 1.3-7.4 2.6-11.9 2.6-10.7 0-19.4-8.7-19.4-19.4s5.2-17.8 15.5-20.7c27.8-7.8 56.2-13.6 97.8-13.6 64.9 0 127.6 16.1 177 45.5 8.1 4.8 11.3 11 11.3 19.7-.1 10.8-8.5 19.5-19.4 19.5zm-26.9 65.6c-4.2 0-6.8-1.3-10.7-3.6-62.4-37.6-135-39.2-206.7-24.5-3.9 1-9 2.6-11.9 2.6-9.7 0-15.8-7.7-15.8-15.8 0-10.3 6.1-15.2 13.6-16.8 81.9-18.1 165.6-16.5 237 26.2 6.1 3.9 9.7 7.4 9.7 16.5s-7.1 15.4-15.2 15.4z"
-              />
-            </svg>
-            Login with Spotify
-          </LoginButton>
-          <div className="text-xs text-zinc-500 mt-6">
-            We will only import your liked tracks. We do not modify your Spotify account in any way.
-          </div>
-        </div>
-      </div>
+    <main className="max-w-4xl mx-auto py-4 sm:py-8 px-3 sm:px-4">
+      <PlaylistHeader memberCount={stats.members} trackCount={stats.tracks} />
+      <TrackBrowser initialTracks={tracks} initialPagination={pagination} />
     </main>
   );
 }

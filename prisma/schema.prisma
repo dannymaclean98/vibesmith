@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Prisma schema for VibeSmiths Playlist Display
 
 generator client {
   provider = "prisma-client-js"
@@ -13,106 +9,113 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// NextAuth models
-model Account {
-  id                 String  @id @default(uuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(uuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
+// Authenticated user - someone who has verified their phone number
 model User {
-  id              String        @id @default(uuid())
-  name            String?
-  email           String?       @unique
-  emailVerified   DateTime?
-  image           String?
-  spotifyId       String?       @unique
-  accounts        Account[]
-  sessions        Session[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  tokens          Token?
-  likedTracks     LikedTrack[]
-  ownedGroups     Group[]       @relation("GroupOwner")
-  memberships     GroupMember[]
+  id          String   @id @default(uuid())
+  phone       String   @unique // Verified phone number (e.g., "12149014824")
+  displayName String?  // User-chosen display name
+  avatarUrl   String?  // URL to avatar (points to /api/avatar/[id] when stored in DB)
+  avatarData  Bytes?   // Avatar image binary data
+  avatarMime  String?  // MIME type (e.g., "image/png")
+  
+  // Link to their Member record (from iMessage data)
+  memberId    String?  @unique
+  member      Member?  @relation(fields: [memberId], references: [id])
+  
+  // Session management
+  sessions    Session[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
+// Session for authenticated users
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([token])
+  @@index([userId])
 }
 
-// Application models
-model Token {
+// Pending verification codes
+model VerificationCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String   // 6-digit code
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  
+  @@index([phone])
+}
+
+// Represents a member of the group chat (from iMessage export)
+model Member {
+  id        String   @id @default(uuid())
+  name      String   // Display name from iMessage or user-set
+  phone     String?  @unique // iMessage identifier (phone number)
+  avatarUrl String?
+  color     String?  // Assigned color for UI display
+  
+  // Link to authenticated user (if they've claimed this profile)
+  user      User?
+  
+  sentTracks   Track[]    @relation("TrackSender")
+  reactions    Reaction[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A track shared in the group chat
+model Track {
   id              String   @id @default(uuid())
-  accessToken     String   @db.Text
-  refreshToken    String   @db.Text
-  expiresAt       DateTime
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model LikedTrack {
-  id              String   @id @default(uuid())
-  spotifyTrackId  String
+  
+  // Spotify/Music metadata
+  spotifyTrackId  String?
+  spotifyUrl      String?
   trackName       String
   artistName      String
   albumName       String?
   albumImageUrl   String?
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  previewUrl      String?
+  
+  // Who sent it and when
+  senderId        String
+  sender          Member   @relation("TrackSender", fields: [senderId], references: [id], onDelete: Cascade)
+  sentAt          DateTime
+  
+  // iMessage data
+  messageId       String?  @unique // Original iMessage ID for deduplication
+  
+  reactions       Reaction[]
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  @@unique([userId, spotifyTrackId])
+  
+  @@index([senderId])
+  @@index([sentAt])
 }
 
-model Group {
-  id              String        @id @default(uuid())
-  name            String
-  description     String?
-  spotifyPlaylistId String?
-  spotifyPlaylistUrl String?
-  ownerId         String
-  owner           User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members         GroupMember[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model GroupMember {
-  id              String   @id @default(uuid())
-  userId          String
-  groupId         String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group           Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  joinedAt        DateTime @default(now())
-
-  @@unique([userId, groupId])
+// Emoji reactions on tracks
+model Reaction {
+  id        String   @id @default(uuid())
+  emoji     String   // The emoji or sticker
+  
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  reactedAt DateTime @default(now())
+  
+  @@unique([trackId, memberId, emoji]) // One reaction type per person per track
+  @@index([trackId])
+  @@index([memberId])
 }
