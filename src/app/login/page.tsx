@@ -2,13 +2,16 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 type Step = 'phone' | 'verify';
 
-export default function LoginPage() {
+function LoginForm() {
   const { sendCode, login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
@@ -64,8 +67,8 @@ export default function LoginPage() {
     setIsLoading(false);
 
     if (result.success) {
-      // Take user to profile page to set their display name and avatar
-      router.push('/profile');
+      // Redirect to the page they were trying to access, or home
+      router.push(redirectTo);
     } else {
       setError(result.error || 'Invalid code');
     }
@@ -81,7 +84,7 @@ export default function LoginPage() {
               <span className="text-3xl">📱</span>
             </div>
             <h1 className="text-2xl font-bold mb-2">
-              {step === 'phone' ? 'Claim Your Profile' : 'Enter Code'}
+              {step === 'phone' ? 'Login' : 'Enter Code'}
             </h1>
             <p className="text-zinc-400 text-sm">
               {step === 'phone'
@@ -202,3 +205,14 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </main>
+    }>
+      <LoginForm />
+    </Suspense>
+  );
+}

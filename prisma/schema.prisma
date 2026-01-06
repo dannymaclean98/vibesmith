@@ -25,6 +25,9 @@ model User {
   // Session management
   sessions    Session[]
   
+  // Game rounds played
+  gameRounds  GameRound[]
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -68,6 +71,9 @@ model Member {
   sentTracks   Track[]    @relation("TrackSender")
   reactions    Reaction[]
   
+  // Game rounds where this member was guessed
+  guessedInRounds GameRound[] @relation("GuessedMember")
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -95,6 +101,9 @@ model Track {
   
   reactions       Reaction[]
   
+  // Game rounds where this track was shown
+  gameRounds      GameRound[]
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
@@ -118,4 +127,29 @@ model Reaction {
   @@unique([trackId, memberId, emoji]) // One reaction type per person per track
   @@index([trackId])
   @@index([memberId])
+}
+
+// Game round - tracks each guess in the "Who Sent It?" game
+model GameRound {
+  id              String   @id @default(uuid())
+  
+  // Who's playing
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // The track shown
+  trackId         String
+  track           Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  
+  // The guess
+  guessedMemberId String
+  guessedMember   Member   @relation("GuessedMember", fields: [guessedMemberId], references: [id])
+  
+  // Result
+  isCorrect       Boolean
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId])
+  @@index([trackId])
 }
